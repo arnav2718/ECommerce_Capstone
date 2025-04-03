@@ -18,13 +18,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.Optional;
 
+@CrossOrigin(origins = "*")
 @RestController
 @RequiredArgsConstructor
 public class AuthController {
@@ -63,7 +62,7 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/sign-up")
+    @PostMapping(value="/sign-up")
     public ResponseEntity<?> signupUser (@RequestBody SignupRequest signupRequest) {
         if((authService.hasUserWithEmail(signupRequest.getEmail()))){
             return new ResponseEntity<>("User with this email already exists", HttpStatus.NOT_ACCEPTABLE);
