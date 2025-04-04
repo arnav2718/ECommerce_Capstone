@@ -38,29 +38,78 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("/authenticate")
-    public void createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest,
-                                          HttpServletResponse response) throws IOException, JSONException {
-        try{
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(), authenticationRequest.getPassword()));
-        } catch(BadCredentialsException e){
-            throw new BadCredentialsException("Incorrect username or password");
-        }
+//    @PostMapping("/authenticate")
+//    public void createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest,
+//                                          HttpServletResponse response) throws IOException, JSONException {
+//        try{
+//            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(authenticationRequest.getUsername(), authenticationRequest.getPassword()));
+//        } catch(BadCredentialsException e){
+//            throw new BadCredentialsException("Incorrect username or password");
+//        }
+//
+//        final UserDetails userDetails = this.userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
+//        Optional<User> optionalUser = this.userRepository.findFirstByEmail(userDetails.getUsername());
+//        final String jwt = jwtUtil.generateToken(userDetails.getUsername());
+//
+//        if(optionalUser.isPresent()){
+//            response.getWriter().write(new JSONObject()
+//                    .put("userId", optionalUser.get().getId())
+//                    .put("role", optionalUser.get().getRole())
+//                    .toString()
+//            );
+//
+//            response.addHeader("Access-Control-Expose-Headers","Authorization");
+//            response.addHeader("Access-Control-Allow-Headers","Authorization, X-PINGOTHER, Origin" +
+//                    "X-Requested-With, Content-Type, Accept, X-Custom-Header");
+//
+//            response.addHeader("Authorization", "Bearer " + jwt);
+//
+//            System.out.println("Authorization Header Sent: " + response.getHeader("Authorization"));
+//        }
+//    }
+@PostMapping("/authenticate")
+public void createAuthenticationToken(
+        @RequestBody AuthenticationRequest authenticationRequest,
+        HttpServletResponse response
+) throws IOException, JSONException {
+    try {
+        // 1. Authenticate
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        authenticationRequest.getUsername(),
+                        authenticationRequest.getPassword()
+                )
+        );
 
-        final UserDetails userDetails = this.userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
-        Optional<User> optionalUser = this.userRepository.findFirstByEmail(userDetails.getUsername());
-        final String jwt = jwtUtil.generateToken(userDetails.getUsername());
+        // 2. Generate JWT (only reaches here if auth succeeds)
+        UserDetails userDetails = userDetailsService.loadUserByUsername(
+                authenticationRequest.getUsername()
+        );
+        String jwt = jwtUtil.generateToken(userDetails.getUsername());
 
-        if(optionalUser.isPresent()){
-            response.getWriter().write(new JSONObject()
-                    .put("userId", optionalUser.get().getId())
-                    .put("role", optionalUser.get().getRole())
-                    .toString()
+        // 3. Prepare response
+        Optional<User> user = userRepository.findFirstByEmail(userDetails.getUsername());
+        if (user.isPresent()) {
+            response.setContentType("application/json");
+            response.getWriter().write(
+                    new JSONObject()
+                            .put("userId", user.get().getId())
+                            .put("role", user.get().getRole())
+                            .toString()
             );
-
             response.addHeader("Authorization", "Bearer " + jwt);
         }
+
+    } catch (BadCredentialsException e) {
+        // 4. Proper error response
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+        response.getWriter().write(
+                new JSONObject()
+                        .put("error", "Invalid credentials")
+                        .toString()
+        );
     }
+}
 
     @PostMapping(value="/sign-up")
     public ResponseEntity<?> signupUser (@RequestBody SignupRequest signupRequest) {
